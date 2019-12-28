@@ -41,7 +41,7 @@ Connect-SPOService -Url ('https://{0}-admin.{1}' -f ($UserORG, $EnvUrl)) -Creden
 If (-Not $?) { Write-Host "Error: Authentication."; Exit 1; }
 $SetQuotaFlag = $false
 $SetQuotaNum = 0
-$StorageQuota = [Math]::floor(5.1 * 1024 * 1024)
+$StorageQuota = [Math]::floor($SetQuotaInt * 1024 * 1024)
 Do {
 $SetQuotaNum += 1
 Write-Host "Setting: Pre-allocation Storage Quota to ${SetQuotaInt}TB"
