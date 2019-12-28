@@ -22,7 +22,7 @@ Office365.ps1 -u <用户名> -p <密码> -l <许可证全名> -cn
 ```
 
 # Office365_OneDrive.ps1
-## 设置 OneDrive 预设网盘容量和<u>已存在用户</u>的网盘容量.(需要全局管理员账户)
+## 设置 OneDrive 预设网盘容量和已存在用户的网盘容量.(需要全局管理员账户)
 ```
 Office365_OneDrive.ps1 -u <用户名> -p <密码> -q <容量> -cn
   -u <用户名>
