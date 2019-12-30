@@ -50,5 +50,5 @@ Set-ExecutionPolicy -ExecutionPolicy Bypass -Force
 ```
 
 # 新手教程
-## New.MD [点次查看](https://github.com/MoeClub/Office365/blob/master/New.MD)
+## New.MD [点此查看](https://github.com/MoeClub/Office365/blob/master/New.MD)
 
