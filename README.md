@@ -49,7 +49,6 @@ Office365_OneDrive.ps1 -u <用户名> -p <密码> -q <容量> -cn
 Set-ExecutionPolicy -ExecutionPolicy Bypass -Force
 ```
 
-# 新手教程
-## New.MD [点此查看](https://github.com/MoeClub/Office365/blob/master/New.MD)
+# 新手教程 [点此查看](https://github.com/MoeClub/Office365/blob/master/New.MD)
 
 # 许可证名称-产品名称-SKU [对照表](https://docs.microsoft.com/en-us/azure/active-directory/users-groups-roles/licensing-service-plan-reference)
