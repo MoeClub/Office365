@@ -14,7 +14,7 @@
 - 查看列出新用户及向其分配的许可证.
 
 ## 温馨提示
-### 登录地址: [https://portal.office.com]https://portal.office.com
+### 登录地址: [https://portal.office.com](https://portal.office.com)
 ### 拿到新账户后请尽快更改账户密码.
 ### 如非必要,请勿在任何场所暴露账户相关信息.
 ### 如果您拿到一个新的全局账户,您可以进以下操作:
