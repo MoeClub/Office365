@@ -48,3 +48,7 @@ Office365_OneDrive.ps1 -u <用户名> -p <密码> -q <容量> -cn
 ```
 Set-ExecutionPolicy -ExecutionPolicy Bypass -Force
 ```
+
+# 新手教程
+## [点击查看](https://github.com/MoeClub/Office365/blob/master/New.MD)
+
