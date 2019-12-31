@@ -41,7 +41,7 @@ Connect-SPOService -Url ('https://{0}-admin.{1}' -f ($UserORG, $EnvUrl)) -Creden
 If (-Not $?) { Write-Host "Error: Authentication."; Exit 1; }
 $SetQuotaFlag = $false
 $SetQuotaNum = 0
-$StorageQuota = [Math]::floor($SetQuotaInt * 1024 * 1024)
+$StorageQuota = [Math]::floor([convert]::ToDouble(${SetQuotaInt}) * 1024 * 1024)
 Do {
 $SetQuotaNum += 1
 Write-Host "Setting: Pre-allocation Storage Quota to ${SetQuotaInt}TB"
@@ -58,6 +58,8 @@ Function SetStorage($UserUrl) {
   $CurrentUser = ([String]([String]$UserUrl -split "/")[-1] -split "_")[0]
   Write-Host "Setting: Storage Quota to ${SetQuotaInt}TB for [${CurrentUser}]"
   Set-SPOSite -StorageQuota $StorageQuota -Identity ${UserUrl}
+  $UserQuota = "{0:n1}" -f ((Get-SPOSite -Identity https://route-my.sharepoint.cn/personal/admin_route_partner_onmschina_cn).StorageQuota / 1024 / 1024)
+  Write-Host "Current: Storage Quota is ${UserQuota}TB for [${CurrentUser}]"
 }
 $UrlType = ($AllUrl.GetType()).Name
 If ($UrlType -eq "Object[]") {
