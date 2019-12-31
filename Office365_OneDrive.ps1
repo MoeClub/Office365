@@ -58,8 +58,12 @@ Function SetStorage($UserUrl) {
   $CurrentUser = ([String]([String]$UserUrl -split "/")[-1] -split "_")[0]
   Write-Host "Setting: Storage Quota to ${SetQuotaInt}TB for [${CurrentUser}]"
   Set-SPOSite -StorageQuota $StorageQuota -Identity ${UserUrl}
-  $UserQuota = "{0:n1}" -f ((Get-SPOSite -Identity https://route-my.sharepoint.cn/personal/admin_route_partner_onmschina_cn).StorageQuota / 1024 / 1024)
-  Write-Host "Current: Storage Quota is ${UserQuota}TB for [${CurrentUser}]"
+  If ($?) {
+    $UserQuota = "{0:n1}" -f ((Get-SPOSite -Identity ${UserUrl}).StorageQuota / 1024 / 1024)
+    Write-Host "Current: Storage Quota is ${UserQuota}TB for [${CurrentUser}]"
+  } else {
+    Write-Host "Error: Storage Quota to ${SetQuotaInt}TB for [${CurrentUser}]"
+  }
 }
 $UrlType = ($AllUrl.GetType()).Name
 If ($UrlType -eq "Object[]") {
