@@ -113,6 +113,7 @@ class MS365:
         self.userDomainDefault = None
         self.userDomainList = list()
         self.userLic = dict()
+        self.userLicDisable = dict()
         self.urlToken = "https://login.microsoftonline.com/{}/oauth2/token"
         # self.urlSource = "https://graph.windows.net"
         self.urlSource = "https://graph.microsoft.com"
@@ -267,12 +268,25 @@ class MS365:
             respJson = json.loads(resp["data"].decode())
             if "value" in respJson:
                 for item in respJson["value"]:
-                    if item["capabilityStatus"] == "Enabled":
+                    if item["capabilityStatus"] in ["Enabled"]:
                         if item["skuId"] in self.userLic:
                             self.userLic[item["skuId"]]["Units"] += self.userLic[item["skuId"]]["Units"]
                             self.userLic[item["skuId"]]["Used"] += self.userLic[item["skuId"]]["Used"]
                         else:
                             self.userLic[item["skuId"]] = {
+                                "Status": item["capabilityStatus"],
+                                "Units": item["prepaidUnits"]["enabled"],
+                                "Used": item["consumedUnits"],
+                                "skuName": item["skuPartNumber"],
+                                "skuId": item["skuId"],
+                            }
+                    else:
+                        if item["skuId"] in self.userLicDisable:
+                            self.userLicDisable[item["skuId"]]["Units"] += self.userLicDisable[item["skuId"]]["Units"]
+                            self.userLicDisable[item["skuId"]]["Used"] += self.userLicDisable[item["skuId"]]["Used"]
+                        else:
+                            self.userLicDisable[item["skuId"]] = {
+                                "Status": item["capabilityStatus"],
                                 "Units": item["prepaidUnits"]["enabled"],
                                 "Used": item["consumedUnits"],
                                 "skuName": item["skuPartNumber"],
@@ -280,6 +294,8 @@ class MS365:
                             }
             if len(self.userLic) > 0:
                 print("Licenses: {}".format("; ".join([str("({}/{}) {}").format(self.userLic[item]["Used"], self.userLic[item]["Units"], self.userLic[item]["skuId"]) for item in self.userLic])), flush=True)
+            if len(self.userLicDisable) > 0:
+                print("Licenses Invalid: {}".format("; ".join([str("({}/{}) [{}] {}").format(self.userLicDisable[item]["Used"], self.userLicDisable[item]["Units"], self.userLicDisable[item]["Status"], self.userLicDisable[item]["skuId"]) for item in self.userLicDisable])), flush=True)
         except Exception as e:
             self.userLic = dict()
             print(str("{}: {}").format(os.sys._getframe().f_code.co_name, e), flush=True)
@@ -425,6 +441,42 @@ class MS365:
             print(str("{}: {}").format(os.sys._getframe().f_code.co_name, e), flush=True)
         return result
 
+    async def deletedUser(self, user):
+        try:
+            assert self.userStatus, "No Login"
+            reqString = "directory/deletedItems/microsoft.graph.user?$filter=endswith(userPrincipalName,'{}')".format(user)
+            url = str("{}/{}/{}").format(self.urlSource, self.apiVersion, reqString)
+            resp = await Utils.http("GET", url=url, headers=self.headers(**{"ConsistencyLevel": "eventual"}))
+            assert resp["code"] == 200, "HTTP_{}".format(resp["code"])
+            respJson = json.loads(resp["data"].decode())
+            if "value" in respJson:
+                for item in respJson["value"]:
+                    if 'userPrincipalName' in item and "id" in item:
+                        if str("{}{}").format(str(item["id"]).replace("-", ""), user) == item["userPrincipalName"]:
+                            return item["id"]
+        except Exception as e:
+            print(str("{}: {}").format(os.sys._getframe().f_code.co_name, e), flush=True)
+        return None
+
+    async def restore(self, user):
+        try:
+            assert self.userStatus, "No Login"
+            if "@" in user:
+                user = await self.deletedUser(user=user)
+            assert user is not None and len(user) == 36, "Invalid User"
+            reqString = "directory/deletedItems/{}/restore".format(user)
+            url = str("{}/{}/{}").format(self.urlSource, self.apiVersion, reqString)
+            resp = await Utils.http("POST", url=url, headers=self.headers(**{"Content-type": "application/json"}), data=json.dumps({"autoReconcileProxyConflict": True}))
+            assert resp["code"] == 200, "HTTP_{}".format(resp["code"])
+            respJson = json.loads(resp["data"].decode())
+            if 'userPrincipalName' in respJson:
+                return respJson["userPrincipalName"]
+            raise Exception("Not Found Type")
+        except Exception as e:
+            print(str("{}: {}").format(os.sys._getframe().f_code.co_name, e), flush=True)
+        return None
+
+
     async def assignRole(self, userId, roleId=None, name=True, delay=0):
         userRole = list()
         try:
@@ -504,14 +556,18 @@ class Task:
         ms = MS365(tenantId=kwargs["tenantId"], clientId=kwargs["clientId"], clientSecret=kwargs["clientSecret"])
         assert await ms.login(domain=kwargs["domain"]), "Login Failed"
         if kwargs["delete"] is None:
-            lic = sorted([(ms.userLic[lic]["skuId"], (ms.userLic[lic]["Units"] - ms.userLic[lic]["Used"])) for lic in ms.userLic], key=lambda l: l[1])
-            if kwargs["num"] < 1:
-                pass
-            elif kwargs["num"] == 1:
-                result = await ms.addUser(newUser=kwargs["newUser"], newPasswd=kwargs["newPasswd"], domain=ms.userDomain, licenses=lic[0][0] if len(lic) > 0 else None)
-                print(json.dumps(result, indent=4, ensure_ascii=False), flush=True)
+            if kwargs["restore"] is None:
+                lic = sorted([(ms.userLic[lic]["skuId"], (ms.userLic[lic]["Units"] - ms.userLic[lic]["Used"])) for lic in ms.userLic], key=lambda l: l[1])
+                if kwargs["num"] < 1:
+                    pass
+                elif kwargs["num"] == 1:
+                    result = await ms.addUser(newUser=kwargs["newUser"], newPasswd=kwargs["newPasswd"], domain=ms.userDomain, licenses=lic[0][0] if len(lic) > 0 else None)
+                    print(json.dumps(result, indent=4, ensure_ascii=False), flush=True)
+                else:
+                    result = await ms.addUsers(num=kwargs["num"], prefix=kwargs["prefix"], newPasswd=kwargs["newPasswd"], domain=ms.userDomain, licenses=lic[0][0] if len(lic) > 0 else None)
             else:
-                result = await ms.addUsers(num=kwargs["num"], prefix=kwargs["prefix"], newPasswd=kwargs["newPasswd"], domain=ms.userDomain, licenses=lic[0][0] if len(lic) > 0 else None)
+                result = await ms.restore(user=kwargs["restore"])
+                print("RESTORE: {}".format(result), flush=True)
         else:
             results = []
             if kwargs["delete"] == "_ALL_":
@@ -542,7 +598,10 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--newPasswd", type=str, default=None, help="User Password")
     parser.add_argument("-d", "--domain", type=str, default=None, help="Use Domain")
     parser.add_argument("-prefix", type=str, default=None, help="User Prefix")
+    parser.add_argument("-restore", type=str, default=None, help="Restore User")
     parser.add_argument("-del", "--delete", type=str, default=None, help="Delete User")
     args = parser.parse_args()
     argsResetLength = len([setattr(args, kv[0], parser.get_default(kv[0])) for kv in args._get_kwargs() if kv[1] == ""])
     loop.run_until_complete(Task.do(**args.__dict__))
+
+
